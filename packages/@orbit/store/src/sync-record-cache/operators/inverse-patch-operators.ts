@@ -1,4 +1,4 @@
-import { deepGet, deepSet, eq, isArray } from '@orbit/utils';
+import { Dict, deepGet, deepSet, eq, isArray } from '@orbit/utils';
 import {
   RecordIdentity,
   RecordOperation,
@@ -11,18 +11,20 @@ import {
   ReplaceRelatedRecordOperation,
   ReplaceKeyOperation,
   ReplaceRecordOperation,
-  equalRecordIdentities
+  equalRecordIdentities,
+  equalRecordIdentitySets,
+  recordIdentitySetContains
 } from '@orbit/data';
-import Cache from '../cache';
+import { SyncRecordCache } from '../sync-record-cache';
 
-export interface InverseTransformFunc {
-  (cache: Cache, op: RecordOperation): RecordOperation;
+export interface InversePatchOperator {
+  (cache: SyncRecordCache, op: RecordOperation): RecordOperation;
 }
 
-const InverseTransforms = {
-  addRecord(cache: Cache, op: AddRecordOperation): RecordOperation {
+const InversePatchOperators: Dict<InversePatchOperator> = {
+  addRecord(cache: SyncRecordCache, op: AddRecordOperation): RecordOperation {
     const { type, id } = op.record;
-    const current = cache.records(type).get(id);
+    const current = cache.getRecord(op.record);
 
     if (current === undefined) {
       return {
@@ -39,10 +41,10 @@ const InverseTransforms = {
     }
   },
 
-  replaceRecord(cache: Cache, op: ReplaceRecordOperation): RecordOperation {
+  replaceRecord(cache: SyncRecordCache, op: ReplaceRecordOperation): RecordOperation {
+    const current = cache.getRecord(op.record);
     const replacement = op.record;
     const { type, id } = replacement;
-    const current = cache.records(type).get(id);
 
     if (current === undefined) {
       return {
@@ -68,20 +70,19 @@ const InverseTransforms = {
 
       if (replacement.relationships) {
         Object.keys(replacement.relationships).forEach(field => {
-          let currentValue = deepGet(current, ['relationships', field]);
-          let value = replacement.relationships[field];
-          let data = value && value.data;
+          let currentData = deepGet(current, ['relationships', field, 'data']);
+          let data = deepGet(replacement, ['relationships', field, 'data']);
 
           let relationshipMatch;
           if (isArray(data)) {
-            relationshipMatch = cache.relationships.relatedRecordsMatch(op.record, field, data as RecordIdentity[]);
+            relationshipMatch = equalRecordIdentitySets(currentData, data);
           } else {
-            relationshipMatch = eq(value, currentValue);
+            relationshipMatch = equalRecordIdentities(currentData, data);
           }
 
           if (!relationshipMatch) {
             changed = true;
-            deepSet(result, ['relationships', field], currentValue === undefined ? null : currentValue);
+            deepSet(result, ['relationships', field, 'data'], currentData === undefined ? null : currentData);
           }
         });
       }
@@ -95,9 +96,8 @@ const InverseTransforms = {
     }
   },
 
-  removeRecord(cache: Cache, op: RemoveRecordOperation): RecordOperation {
-    const { type, id } = op.record;
-    const current = cache.records(type).get(id);
+  removeRecord(cache: SyncRecordCache, op: RemoveRecordOperation): RecordOperation {
+    const current = cache.getRecord(op.record);
 
     if (current !== undefined) {
       return {
@@ -107,12 +107,13 @@ const InverseTransforms = {
     }
   },
 
-  replaceKey(cache: Cache, op: ReplaceKeyOperation): RecordOperation {
-    const { type, id } = op.record;
-    const record = cache.records(type).get(id);
+  replaceKey(cache: SyncRecordCache, op: ReplaceKeyOperation): RecordOperation {
+    const record = cache.getRecord(op.record);
     const current = record && deepGet(record, ['keys', op.key]);
 
     if (!eq(current, op.value)) {
+      const { type, id } = op.record;
+
       return {
         op: 'replaceKey',
         record: { type, id },
@@ -122,13 +123,14 @@ const InverseTransforms = {
     }
   },
 
-  replaceAttribute(cache: Cache, op: ReplaceAttributeOperation): RecordOperation {
-    const { type, id } = op.record;
+  replaceAttribute(cache: SyncRecordCache, op: ReplaceAttributeOperation): RecordOperation {
     const { attribute } = op;
-    const record = cache.records(type).get(id);
+    const record = cache.getRecord(op.record);
     const current = record && deepGet(record, ['attributes', attribute]);
 
     if (!eq(current, op.value)) {
+      const { type, id } = record;
+
       return {
         op: 'replaceAttribute',
         record: { type, id },
@@ -138,10 +140,11 @@ const InverseTransforms = {
     }
   },
 
-  addToRelatedRecords(cache: Cache, op: AddToRelatedRecordsOperation): RecordOperation {
+  addToRelatedRecords(cache: SyncRecordCache, op: AddToRelatedRecordsOperation): RecordOperation {
     const { record, relationship, relatedRecord } = op;
+    const currentRelatedRecords = cache.getRelatedRecords(record, relationship);
 
-    if (!cache.relationships.relationshipExists(record, relationship, relatedRecord)) {
+    if (!recordIdentitySetContains(currentRelatedRecords, relatedRecord)) {
       return {
         op: 'removeFromRelatedRecords',
         record,
@@ -151,10 +154,11 @@ const InverseTransforms = {
     }
   },
 
-  removeFromRelatedRecords(cache: Cache, op: RemoveFromRelatedRecordsOperation): RecordOperation {
+  removeFromRelatedRecords(cache: SyncRecordCache, op: RemoveFromRelatedRecordsOperation): RecordOperation {
     const { record, relationship, relatedRecord } = op;
+    const currentRelatedRecords = cache.getRelatedRecords(record, relationship);
 
-    if (cache.relationships.relationshipExists(record, relationship, relatedRecord)) {
+    if (recordIdentitySetContains(currentRelatedRecords, relatedRecord)) {
       return {
         op: 'addToRelatedRecords',
         record,
@@ -164,31 +168,33 @@ const InverseTransforms = {
     }
   },
 
-  replaceRelatedRecords(cache: Cache, op: ReplaceRelatedRecordsOperation): RecordOperation {
+  replaceRelatedRecords(cache: SyncRecordCache, op: ReplaceRelatedRecordsOperation): RecordOperation {
     const { record, relationship, relatedRecords } = op;
+    const currentRelatedRecords = cache.getRelatedRecords(record, relationship);
 
-    if (!cache.relationships.relatedRecordsMatch(record, relationship, relatedRecords)) {
+    if (!equalRecordIdentitySets(currentRelatedRecords, relatedRecords)) {
       return {
         op: 'replaceRelatedRecords',
         record,
         relationship,
-        relatedRecords: cache.relationships.relatedRecords(record, relationship)
+        relatedRecords: currentRelatedRecords
       };
     }
   },
 
-  replaceRelatedRecord(cache: Cache, op: ReplaceRelatedRecordOperation): RecordOperation {
+  replaceRelatedRecord(cache: SyncRecordCache, op: ReplaceRelatedRecordOperation): RecordOperation {
     const { record, relationship, relatedRecord } = op;
+    const currentRelatedRecord = cache.getRelatedRecord(record, relationship);
 
-    if (!cache.relationships.relationshipExists(record, relationship, relatedRecord)) {
+    if (!equalRecordIdentities(currentRelatedRecord, relatedRecord)) {
       return {
         op: 'replaceRelatedRecord',
         record,
         relationship,
-        relatedRecord: cache.relationships.relatedRecord(record, relationship) || null
+        relatedRecord: currentRelatedRecord
       };
     }
   }
 };
 
-export default InverseTransforms;
+export default InversePatchOperators;

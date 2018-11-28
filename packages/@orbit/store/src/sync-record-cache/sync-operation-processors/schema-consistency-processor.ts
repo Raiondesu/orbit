@@ -1,5 +1,4 @@
 import {
-  Dict,
   deepGet,
   isArray
 } from '@orbit/utils';
@@ -9,10 +8,10 @@ import {
   Record,
   RecordIdentity,
   RecordOperation,
-  RelationshipDefinition
+  RelationshipDefinition,
+  exclusiveOfRecordIdentitySet
 } from '@orbit/data';
-import { OperationProcessor } from './operation-processor';
-import RecordIdentityMap from '../record-identity-map';
+import { SyncOperationProcessor } from '../sync-operation-processor';
 
 /**
  * An operation processor that ensures that a cache's data is consistent with
@@ -24,7 +23,7 @@ import RecordIdentityMap from '../record-identity-map';
  * @class SchemaConsistencyProcessor
  * @extends {OperationProcessor}
  */
-export default class SchemaConsistencyProcessor extends OperationProcessor {
+export default class SchemaConsistencyProcessor extends SyncOperationProcessor {
   after(operation: RecordOperation): RecordOperation[] {
     switch (operation.op) {
       case 'addRecord':
@@ -86,7 +85,7 @@ export default class SchemaConsistencyProcessor extends OperationProcessor {
 
     if (inverseRelationship) {
       if (relatedRecord === undefined) {
-        const currentRecord = this.cache.records(record.type).get(record.id);
+        const currentRecord = this.cache.getRecord(record);
         relatedRecord = currentRecord && deepGet(currentRecord, ['relationships', relationship, 'data']);
       }
 
@@ -104,7 +103,7 @@ export default class SchemaConsistencyProcessor extends OperationProcessor {
     const inverseRelationship = relationshipDef.inverse;
 
     if (inverseRelationship) {
-      let currentRelatedRecord = this.cache.relationships.relatedRecord(record, relationship);
+      let currentRelatedRecord = this.cache.getRelatedRecord(record, relationship);
 
       if (!equalRecordIdentities(relatedRecord, currentRelatedRecord)) {
         if (currentRelatedRecord) {
@@ -127,7 +126,7 @@ export default class SchemaConsistencyProcessor extends OperationProcessor {
 
     if (inverseRelationship) {
       if (relatedRecords === undefined) {
-        relatedRecords = this.cache.relationships.relatedRecords(record, relationship);
+        relatedRecords = this.cache.getRelatedRecords(record, relationship);
       }
 
       if (relatedRecords) {
@@ -141,18 +140,15 @@ export default class SchemaConsistencyProcessor extends OperationProcessor {
   _relatedRecordsReplaced(record: RecordIdentity, relationship: string, relatedRecords: RecordIdentity[]): RecordOperation[] {
     const ops: RecordOperation[] = [];
     const relationshipDef = this.cache.schema.getModel(record.type).relationships[relationship];
-    const currentRelatedRecordsMap = this.cache.relationships.relatedRecordsMap(record, relationship);
+    const currentRelatedRecords = this.cache.getRelatedRecords(record, relationship);
 
     let addedRecords;
 
-    if (currentRelatedRecordsMap) {
-      const relatedRecordsMap = new RecordIdentityMap();
-      relatedRecords.forEach(r => relatedRecordsMap.add(r));
-
-      let removedRecords = currentRelatedRecordsMap.exclusiveOf(relatedRecordsMap);
+    if (currentRelatedRecords && currentRelatedRecords.length > 0) {
+      let removedRecords = exclusiveOfRecordIdentitySet(currentRelatedRecords, relatedRecords);
       Array.prototype.push.apply(ops, this._removeRelatedRecordsOps(record, relationshipDef, removedRecords));
 
-      addedRecords = relatedRecordsMap.exclusiveOf(currentRelatedRecordsMap);
+      addedRecords = exclusiveOfRecordIdentitySet(relatedRecords, currentRelatedRecords);
     } else {
       addedRecords = relatedRecords;
     }
@@ -186,7 +182,7 @@ export default class SchemaConsistencyProcessor extends OperationProcessor {
 
   _recordRemoved(record: RecordIdentity): RecordOperation[] {
     const ops: RecordOperation[] = [];
-    const currentRecord = this.cache.records(record.type).get(record.id);
+    const currentRecord = this.cache.getRecord(record);
     const relationships = currentRecord && currentRecord.relationships;
 
     if (relationships) {

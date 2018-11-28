@@ -296,9 +296,9 @@ module('Cache', function(hooks) {
     cache.on('patch', (op) => {
       order++;
       if (order === 1) {
-        assert.deepEqual(op, replacePlanet, 'applied operation');
+        assert.deepEqual(op, replacePlanet, 'applied replacePlanet operation');
       } else if (order === 2) {
-        assert.deepEqual(op, addToMoons, 'applied operation');
+        assert.deepEqual(op, addToMoons, 'applied addToMoons operation');
       } else {
         assert.ok(false, 'too many ops');
       }

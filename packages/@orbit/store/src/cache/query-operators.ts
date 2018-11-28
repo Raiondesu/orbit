@@ -26,18 +26,18 @@ export interface QueryOperator {
 
 export const QueryOperators: Dict<QueryOperator> = {
   findRecord(cache: Cache, expression: FindRecord) {
-    const { type, id } = expression.record;
-    const record = cache.records(type).get(id);
+    const { record } = expression;
+    const currentRecord = cache.getRecord(record);
 
-    if (!record) {
-      throw new RecordNotFoundException(type, id);
+    if (!currentRecord) {
+      throw new RecordNotFoundException(record.type, record.id);
     }
 
-    return record;
+    return currentRecord;
   },
 
   findRecords(cache: Cache, expression: FindRecords) {
-    let results = Array.from(cache.records(expression.type).values());
+    let results = cache.getRecords(expression.type);
     if (expression.filter) {
       results = filterRecords(results, expression.filter);
     }
@@ -50,27 +50,20 @@ export const QueryOperators: Dict<QueryOperator> = {
     return results;
   },
 
-  findRelatedRecords(cache: Cache, expression: FindRelatedRecords) {
+  findRelatedRecords(cache: Cache, expression: FindRelatedRecords): Record[] {
     const { record, relationship } = expression;
-    const { type, id } = record;
-    const currentRecord = cache.records(type).get(id);
-    const data = currentRecord && deepGet(currentRecord, ['relationships', relationship, 'data']);
-
-    if (!data) { return []; }
-
-    return (data as RecordIdentity[]).map(r => cache.records(r.type).get(r.id));
+    const relatedIds = cache.getRelatedRecords(record, relationship);
+    return relatedIds.map(id => cache.getRecord(id));
   },
 
-  findRelatedRecord(cache: Cache, expression: FindRelatedRecord) {
+  findRelatedRecord(cache: Cache, expression: FindRelatedRecord): Record {
     const { record, relationship } = expression;
-    const { type, id } = record;
-    const currentRecord = cache.records(type).get(id);
-    const data = currentRecord && deepGet(currentRecord, ['relationships', relationship, 'data']);
-
-    if (!data) { return null; }
-
-    const r = data as RecordIdentity;
-    return cache.records(r.type).get(r.id);
+    const relatedId = cache.getRelatedRecord(record, relationship);
+    if (relatedId) {
+      return cache.getRecord(relatedId);
+    } else {
+      return null;
+    }
   }
 };
 

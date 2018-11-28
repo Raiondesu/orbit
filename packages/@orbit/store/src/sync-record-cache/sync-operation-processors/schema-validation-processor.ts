@@ -3,7 +3,7 @@ import {
   RecordIdentity,
   RecordOperation,
 } from '@orbit/data';
-import { OperationProcessor } from './operation-processor';
+import { SyncOperationProcessor } from '../sync-operation-processor';
 
 /**
  * An operation processor that ensures that an operation is compatible with
@@ -13,7 +13,7 @@ import { OperationProcessor } from './operation-processor';
  * @class SchemaValidationProcessor
  * @extends {OperationProcessor}
  */
-export default class SchemaValidationProcessor extends OperationProcessor {
+export default class SchemaValidationProcessor extends SyncOperationProcessor {
   validate(operation: RecordOperation) {
     switch (operation.op) {
       case 'addRecord':

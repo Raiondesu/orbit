@@ -1,48 +1,21 @@
 /* eslint-disable valid-jsdoc */
-import { isArray, Dict } from '@orbit/utils';
-import {
-  evented, Evented
-} from '@orbit/core';
+import { clone, Dict } from '@orbit/utils';
 import {
   Record,
   RecordIdentity,
-  KeyMap,
-  Operation,
-  RecordOperation,
-  Query,
   QueryOrExpression,
   QueryExpression,
   QueryBuilder,
-  Schema,
-  TransformBuilder,
-  TransformBuilderFunc,
   buildQuery
 } from '@orbit/data';
-import { OperationProcessor, OperationProcessorClass } from './cache/operation-processors/operation-processor';
-import CacheIntegrityProcessor from './cache/operation-processors/cache-integrity-processor';
-import SchemaConsistencyProcessor from './cache/operation-processors/schema-consistency-processor';
-import SchemaValidationProcessor from './cache/operation-processors/schema-validation-processor';
 import { QueryOperators } from './cache/query-operators';
-import PatchTransforms, { PatchTransformFunc } from './cache/patch-transforms';
-import InverseTransforms, { InverseTransformFunc } from './cache/inverse-transforms';
+import { SyncRecordCache, SyncRecordCacheSettings } from './sync-record-cache/sync-record-cache';
 import { ImmutableMap } from '@orbit/immutable';
-import RelationshipAccessor from './cache/relationship-accessor';
-import InverseRelationshipAccessor from './cache/inverse-relationship-accessor';
+import { RelatedRecordIdentity } from './sync-record-cache/sync-record-cache';
 
-export interface CacheSettings {
-  schema?: Schema;
-  keyMap?: KeyMap;
-  processors?: OperationProcessorClass[];
+export interface CacheSettings extends SyncRecordCacheSettings {
   base?: Cache;
   queryBuilder?: QueryBuilder;
-  transformBuilder?: TransformBuilder;
-}
-
-export type PatchResultData = Record | RecordIdentity | null;
-
-export interface PatchResult {
-  inverse: RecordOperation[],
-  data: PatchResultData[]
 }
 
 /**
@@ -51,70 +24,95 @@ export interface PatchResult {
  * Caches use operation processors to maintain internal consistency.
  *
  * Because data is stored in immutable maps, caches can be forked efficiently.
- *
- * @export
- * @class Cache
- * @implements {Evented}
  */
-@evented
-export default class Cache implements Evented {
-  private _keyMap: KeyMap;
-  private _schema: Schema;
-  private _queryBuilder: QueryBuilder;
-  private _transformBuilder: TransformBuilder;
-  private _processors: OperationProcessor[];
-  private _records: Dict<ImmutableMap<string, Record>>;
-  private _relationships: RelationshipAccessor;
-  private _inverseRelationships: InverseRelationshipAccessor;
-
-  // Evented interface stubs
-  on: (event: string, callback: Function, binding?: object) => void;
-  off: (event: string, callback: Function, binding?: object) => void;
-  one: (event: string, callback: Function, binding?: object) => void;
-  emit: (event: string, ...args: any[]) => void;
-  listeners: (event: string) => any[];
+export default class Cache extends SyncRecordCache {
+  protected _queryBuilder: QueryBuilder;
+  protected _records: Dict<ImmutableMap<string, Record>>;
+  protected _inverseRelationships: Dict<ImmutableMap<string, RelatedRecordIdentity[]>>;
 
   constructor(settings: CacheSettings = {}) {
-    this._schema = settings.schema;
-    this._keyMap = settings.keyMap;
+    super(settings);
 
     this._queryBuilder = settings.queryBuilder || new QueryBuilder();
-    this._transformBuilder = settings.transformBuilder || new TransformBuilder({
-      recordInitializer: this._schema
-    });
-
-    const processors: OperationProcessorClass[] = settings.processors ? settings.processors : [SchemaValidationProcessor, SchemaConsistencyProcessor, CacheIntegrityProcessor];
-    this._processors = processors.map(Processor => new Processor(this));
 
     this.reset(settings.base);
   }
 
-  get keyMap(): KeyMap {
-    return this._keyMap;
+  getRecord(identity: RecordIdentity): Record {
+    return this._records[identity.type].get(identity.id);
   }
 
-  get schema(): Schema {
-    return this._schema;
+  getRecords(type: string): Record[] {
+    return Array.from(this._records[type].values());
+  }
+
+  getInverselyRelatedRecords(recordIdentity: RecordIdentity): RelatedRecordIdentity[] {
+    return this._inverseRelationships[recordIdentity.type].get(recordIdentity.id) || [];
+  }
+
+  setRecord(record: Record): void {
+    this._records[record.type].set(record.id, record);
+  }
+
+  setRecords(type: string, records: Record[]): void {
+    // TODO
+    // let map: [string, Record][] = records.map(entry => {
+    //   return [entry.id, entry];
+    // })
+    // this._records[type].setMany(map);
+
+    records.forEach(record => this.setRecord(record));
+  }
+
+  removeRecord(recordIdentity: RecordIdentity): null | Record {
+    const recordMap = this._records[recordIdentity.type];
+    const record = recordMap.get(recordIdentity.id);
+    if (record) {
+      recordMap.remove(recordIdentity.id);
+      return record;
+    } else {
+      return null;
+    }
+  }
+
+  removeRecords(type: string, recordIdentities: RecordIdentity[]): Record[] {
+    const recordMap = this._records[type];
+    const records = [];
+    const ids = [];
+    recordIdentities.forEach(recordIdentity => {
+      let record = recordMap.get(recordIdentity.id);
+      if (record) {
+        records.push(record);
+        ids.push(recordIdentity.id);
+      }
+    });
+    recordMap.removeMany(ids);
+    return records;
+  }
+
+  addInverselyRelatedRecord(recordIdentity: RecordIdentity, inverseRelationship: RelatedRecordIdentity): void {
+    let rels = this._inverseRelationships[recordIdentity.type].get(recordIdentity.id);
+    rels = rels ? clone(rels) : [];
+    rels.push(inverseRelationship);
+    this._inverseRelationships[recordIdentity.type].set(recordIdentity.id, rels);
+  }
+
+  removeInverselyRelatedRecord(recordIdentity: RecordIdentity, inverseRelationship: RelatedRecordIdentity): void {
+    let rels = this._inverseRelationships[recordIdentity.type].get(recordIdentity.id);
+    if (rels) {
+      let newRels = rels.filter(r => !(r.record.type === inverseRelationship.record.type &&
+                                       r.record.id === inverseRelationship.record.id &&
+                                       r.relationship === inverseRelationship.relationship));
+      this._inverseRelationships[recordIdentity.type].set(recordIdentity.id, newRels);
+    }
+  }
+
+  removeInverseRelationships(recordIdentity: RecordIdentity): void {
+    this._inverseRelationships[recordIdentity.type].remove(recordIdentity.id);
   }
 
   get queryBuilder(): QueryBuilder {
     return this._queryBuilder;
-  }
-
-  get transformBuilder(): TransformBuilder {
-    return this._transformBuilder;
-  }
-
-  records(type: string): ImmutableMap<string, Record> {
-    return this._records[type];
-  }
-
-  get relationships(): RelationshipAccessor {
-    return this._relationships;
-  }
-
-  get inverseRelationships(): InverseRelationshipAccessor {
-    return this._inverseRelationships;
   }
 
   /**
@@ -154,17 +152,16 @@ export default class Cache implements Evented {
    * @param {Cache} [base]
    * @memberof Cache
    */
-  reset(base?: Cache) {
+  reset(base?: Cache): void {
     this._records = {};
 
     Object.keys(this._schema.models).forEach(type => {
-      let baseRecords = base && base.records(type);
+      let baseRecords = base && base._records[type];
 
       this._records[type] = new ImmutableMap<string, Record>(baseRecords);
     });
 
-    this._relationships = new RelationshipAccessor(this, base && base.relationships);
-    this._inverseRelationships = new InverseRelationshipAccessor(this, base && base.inverseRelationships);
+    this._resetInverseRelationships(base);
 
     this._processors.forEach(processor => processor.reset(base));
 
@@ -183,90 +180,21 @@ export default class Cache implements Evented {
       }
     });
 
-    this._relationships.upgrade();
-    this._inverseRelationships.upgrade();
+    this._resetInverseRelationships();
     this._processors.forEach(processor => processor.upgrade());
-  }
-
-  /**
-   * Patches the document with an operation.
-   *
-   * @param {(Operation | Operation[] | TransformBuilderFunc)} operationOrOperations
-   * @returns {Operation[]}
-   * @memberof Cache
-   */
-  patch(operationOrOperations: RecordOperation | RecordOperation[] | TransformBuilderFunc): PatchResult {
-    if (typeof operationOrOperations === 'function') {
-      operationOrOperations = <RecordOperation | RecordOperation[]>operationOrOperations(this._transformBuilder);
-    }
-
-    const result: PatchResult = {
-      inverse: [],
-      data: []
-    }
-
-    if (isArray(operationOrOperations)) {
-      this._applyOperations(<RecordOperation[]>operationOrOperations, result, true);
-
-    } else {
-      this._applyOperation(<RecordOperation>operationOrOperations, result, true);
-    }
-
-    result.inverse.reverse();
-
-    return result;
   }
 
   /////////////////////////////////////////////////////////////////////////////
   // Protected methods
   /////////////////////////////////////////////////////////////////////////////
 
-  protected _applyOperations(ops: RecordOperation[], result: PatchResult, primary: boolean = false) {
-    ops.forEach(op => this._applyOperation(op, result, primary));
-  }
-
-  protected _applyOperation(operation: RecordOperation, result: PatchResult, primary: boolean = false) {
-    this._processors.forEach(processor => processor.validate(operation));
-
-    const inverseTransform: InverseTransformFunc = InverseTransforms[ operation.op ];
-    const inverseOp: RecordOperation = inverseTransform(this, operation);
-
-    if (inverseOp) {
-      result.inverse.push(inverseOp);
-
-      // Query and perform related `before` operations
-      this._processors
-          .map(processor => processor.before(operation))
-          .forEach(ops => this._applyOperations(ops, result));
-
-      // Query related `after` operations before performing
-      // the requested operation. These will be applied on success.
-      let preparedOps = this._processors.map(processor => processor.after(operation));
-
-      // Perform the requested operation
-      let patchTransform: PatchTransformFunc = PatchTransforms[ operation.op ];
-      let data: PatchResultData = patchTransform(this, operation);
-      if (primary) {
-        result.data.push(data);
-      }
-
-      // Query and perform related `immediate` operations
-      this._processors
-          .forEach(processor => processor.immediate(operation));
-
-      // Emit event
-      this.emit('patch', operation, data);
-
-      // Perform prepared operations after performing the requested operation
-      preparedOps.forEach(ops => this._applyOperations(ops, result));
-
-      // Query and perform related `finally` operations
-      this._processors
-          .map(processor => processor.finally(operation))
-          .forEach(ops => this._applyOperations(ops, result));
-    } else if (primary) {
-      result.data.push(null);
-    }
+  protected _resetInverseRelationships(base?: Cache) {
+    const inverseRelationships = {};
+    Object.keys(this._schema.models).forEach(type => {
+      let baseRelationships = base && base._inverseRelationships[type];
+      inverseRelationships[type] = new ImmutableMap(baseRelationships);
+    });
+    this._inverseRelationships = inverseRelationships;
   }
 
   protected _query(expression: QueryExpression): any {
