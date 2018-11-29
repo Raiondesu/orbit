@@ -1,8 +1,8 @@
-import { SyncRecordCache } from './sync-record-cache';
+import { SyncRecordAccessor } from './sync-record-accessor';
 import { RecordOperation } from '@orbit/data';
 
 export interface SyncOperationProcessorClass {
-  new (cache: SyncRecordCache): SyncOperationProcessor;
+  new (cache: SyncRecordAccessor): SyncOperationProcessor;
 }
 
 /**
@@ -14,16 +14,16 @@ export interface SyncOperationProcessorClass {
  * operation processors.
  */
 export abstract class SyncOperationProcessor {
-  private _cache: SyncRecordCache;
+  private _cache: SyncRecordAccessor;
 
   /**
-   * The `SyncRecordCache` that is monitored.
+   * The `SyncRecordAccessor` that is monitored.
    */
   get cache() {
     return this._cache;
   }
 
-  constructor(cache: SyncRecordCache) {
+  constructor(cache: SyncRecordAccessor) {
     this._cache = cache;
   }
 
@@ -32,7 +32,7 @@ export abstract class SyncOperationProcessor {
    *
    * If `base` is included, the cache is being reset to match a base cache.
    */
-  reset(base?: SyncRecordCache): void {}
+  reset(base?: SyncRecordAccessor): void {}
 
   /**
    * Allow the processor to perform an upgrade as part of a cache upgrade.

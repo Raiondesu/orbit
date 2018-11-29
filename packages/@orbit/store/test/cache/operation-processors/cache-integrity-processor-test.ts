@@ -4,7 +4,7 @@ import {
   KeyMap,
   cloneRecordIdentity
 } from '@orbit/data';
-import CacheIntegrityProcessor from '../../../src/cache/operation-processors/cache-integrity-processor';
+import CacheIntegrityProcessor from '../../../src/sync-record-cache/sync-operation-processors/cache-integrity-processor';
 import Cache from '../../../src/cache';
 import '../../test-helper';
 
@@ -83,22 +83,22 @@ module('CacheIntegrityProcessor', function(hooks) {
       t.addRecord(europa)
     ]);
 
-    assert.deepEqual(cache.inverseRelationships.all(europa), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(europa), [{
       record: { type: 'planet', id: 'jupiter' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(titan), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(titan), [{
       record: { type: 'planet', id: 'saturn' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(jupiter), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(jupiter), [{
       record: { type: 'moon', id: 'europa' },
       relationship: 'planet'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'moon', id: 'titan' },
       relationship: 'planet'
     }]);
@@ -128,22 +128,22 @@ module('CacheIntegrityProcessor', function(hooks) {
       t.addRecord(europa)
     ]);
 
-    assert.deepEqual(cache.inverseRelationships.all(europa), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(europa), [{
       record: { type: 'planet', id: 'jupiter' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(titan), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(titan), [{
       record: { type: 'planet', id: 'saturn' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(jupiter), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(jupiter), [{
       record: { type: 'moon', id: 'europa' },
       relationship: 'planet'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'moon', id: 'titan' },
       relationship: 'planet'
     }]);
@@ -170,19 +170,19 @@ module('CacheIntegrityProcessor', function(hooks) {
       []
     );
 
-    assert.deepEqual(cache.inverseRelationships.all(europa), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(europa), [{
       record: { type: 'planet', id: 'jupiter' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(titan), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(titan), [{
       record: { type: 'planet', id: 'saturn' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(jupiter), []);
+    assert.deepEqual(cache.getInverselyRelatedRecords(jupiter), []);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'moon', id: 'titan' },
       relationship: 'planet'
     }, {
@@ -215,22 +215,22 @@ module('CacheIntegrityProcessor', function(hooks) {
       t.addRecord(europa)
     ]);
 
-    assert.deepEqual(cache.inverseRelationships.all(europa), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(europa), [{
       record: { type: 'planet', id: 'jupiter' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(titan), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(titan), [{
       record: { type: 'planet', id: 'saturn' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(jupiter), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(jupiter), [{
       record: { type: 'moon', id: 'europa' },
       relationship: 'planet'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'moon', id: 'titan' },
       relationship: 'planet'
     }]);
@@ -259,19 +259,19 @@ module('CacheIntegrityProcessor', function(hooks) {
       []
     );
 
-    assert.deepEqual(cache.inverseRelationships.all(europa), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(europa), [{
       record: { type: 'planet', id: 'jupiter' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(titan), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(titan), [{
       record: { type: 'planet', id: 'saturn' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(jupiter), []);
+    assert.deepEqual(cache.getInverselyRelatedRecords(jupiter), []);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'moon', id: 'titan' },
       relationship: 'planet'
     }, {
@@ -294,12 +294,12 @@ module('CacheIntegrityProcessor', function(hooks) {
       t.addRecord(titan)
     ]);
 
-    assert.deepEqual(cache.inverseRelationships.all(titan), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(titan), [{
       record: { type: 'planet', id: 'saturn' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'moon', id: 'titan' },
       relationship: 'planet'
     }]);
@@ -326,9 +326,9 @@ module('CacheIntegrityProcessor', function(hooks) {
       []
     );
 
-    assert.deepEqual(cache.inverseRelationships.all(titan), []);
+    assert.deepEqual(cache.getInverselyRelatedRecords(titan), []);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'moon', id: 'titan' },
       relationship: 'planet'
     }]);
@@ -352,12 +352,12 @@ module('CacheIntegrityProcessor', function(hooks) {
       t.addRecord(titan)
     ]);
 
-    assert.deepEqual(cache.inverseRelationships.all(titan), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(titan), [{
       record: { type: 'planet', id: 'saturn' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'moon', id: 'titan' },
       relationship: 'planet'
     }]);
@@ -384,12 +384,12 @@ module('CacheIntegrityProcessor', function(hooks) {
       []
     );
 
-    assert.deepEqual(cache.inverseRelationships.all(titan), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(titan), [{
       record: { type: 'planet', id: 'saturn' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'moon', id: 'titan' },
       relationship: 'planet'
     }]);
@@ -419,22 +419,22 @@ module('CacheIntegrityProcessor', function(hooks) {
       t.addRecord(europa)
     ]);
 
-    assert.deepEqual(cache.inverseRelationships.all(europa), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(europa), [{
       record: { type: 'planet', id: 'jupiter' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(titan), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(titan), [{
       record: { type: 'planet', id: 'saturn' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(jupiter), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(jupiter), [{
       record: { type: 'moon', id: 'europa' },
       relationship: 'planet'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'moon', id: 'titan' },
       relationship: 'planet'
     }]);
@@ -461,7 +461,7 @@ module('CacheIntegrityProcessor', function(hooks) {
       []
     );
 
-    assert.deepEqual(cache.inverseRelationships.all(europa), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(europa), [{
       record: { type: 'planet', id: 'jupiter' },
       relationship: 'moons'
     }, {
@@ -469,14 +469,14 @@ module('CacheIntegrityProcessor', function(hooks) {
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(titan), []);
+    assert.deepEqual(cache.getInverselyRelatedRecords(titan), []);
 
-    assert.deepEqual(cache.inverseRelationships.all(jupiter), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(jupiter), [{
       record: { type: 'moon', id: 'europa' },
       relationship: 'planet'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'moon', id: 'titan' },
       relationship: 'planet'
     }]);
@@ -491,12 +491,12 @@ module('CacheIntegrityProcessor', function(hooks) {
       t.addRecord(earth)
     ]);
 
-    assert.deepEqual(cache.inverseRelationships.all(earth), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(earth), [{
       record: { type: 'inhabitant', id: 'human' },
       relationship: 'planets'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(human), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(human), [{
       record: { type: 'planet', id: 'earth' },
       relationship: 'inhabitants'
     }]);
@@ -518,12 +518,12 @@ module('CacheIntegrityProcessor', function(hooks) {
       []
     );
 
-    assert.deepEqual(cache.inverseRelationships.all(earth), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(earth), [{
       record: { type: 'inhabitant', id: 'human' },
       relationship: 'planets'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(human), []);
+    assert.deepEqual(cache.getInverselyRelatedRecords(human), []);
   });
 
   test('remove hasOne => hasMany', function(assert) {
@@ -550,22 +550,22 @@ module('CacheIntegrityProcessor', function(hooks) {
       t.addRecord(europa)
     ]);
 
-    assert.deepEqual(cache.inverseRelationships.all(europa), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(europa), [{
       record: { type: 'planet', id: 'jupiter' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(titan), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(titan), [{
       record: { type: 'planet', id: 'saturn' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(jupiter), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(jupiter), [{
       record: { type: 'moon', id: 'europa' },
       relationship: 'planet'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'moon', id: 'titan' },
       relationship: 'planet'
     }]);
@@ -592,19 +592,19 @@ module('CacheIntegrityProcessor', function(hooks) {
       []
     );
 
-    assert.deepEqual(cache.inverseRelationships.all(europa), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(europa), [{
       record: { type: 'planet', id: 'jupiter' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(titan), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(titan), [{
       record: { type: 'planet', id: 'saturn' },
       relationship: 'moons'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(jupiter), []);
+    assert.deepEqual(cache.getInverselyRelatedRecords(jupiter), []);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'moon', id: 'titan' },
       relationship: 'planet'
     }]);
@@ -628,12 +628,12 @@ module('CacheIntegrityProcessor', function(hooks) {
       t.addRecord(earth)
     ]);
 
-    assert.deepEqual(cache.inverseRelationships.all(jupiter), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(jupiter), [{
       record: { type: 'planet', id: 'saturn' },
       relationship: 'next'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'planet', id: 'jupiter' },
       relationship: 'previous'
     }]);
@@ -661,12 +661,12 @@ module('CacheIntegrityProcessor', function(hooks) {
     );
 
 
-    assert.deepEqual(cache.inverseRelationships.all(jupiter), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(jupiter), [{
       record: { type: 'planet', id: 'saturn' },
       relationship: 'next'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'planet', id: 'jupiter' },
       relationship: 'previous'
     }, {
@@ -693,12 +693,12 @@ module('CacheIntegrityProcessor', function(hooks) {
       t.addRecord(earth)
     ]);
 
-    assert.deepEqual(cache.inverseRelationships.all(jupiter), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(jupiter), [{
       record: { type: 'planet', id: 'saturn' },
       relationship: 'next'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'planet', id: 'jupiter' },
       relationship: 'previous'
     }]);
@@ -725,7 +725,7 @@ module('CacheIntegrityProcessor', function(hooks) {
       []
     );
 
-    assert.deepEqual(cache.inverseRelationships.all(jupiter), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(jupiter), [{
       record: { type: 'planet', id: 'saturn' },
       relationship: 'next'
     }, {
@@ -733,7 +733,7 @@ module('CacheIntegrityProcessor', function(hooks) {
       relationship: 'next'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(saturn), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(saturn), [{
       record: { type: 'planet', id: 'jupiter' },
       relationship: 'previous'
     }]);
@@ -748,8 +748,8 @@ module('CacheIntegrityProcessor', function(hooks) {
       t.addRecord(human)
     ]);
 
-    assert.deepEqual(cache.inverseRelationships.all(earth), []);
-    assert.deepEqual(cache.inverseRelationships.all(human), []);
+    assert.deepEqual(cache.getInverselyRelatedRecords(earth), []);
+    assert.deepEqual(cache.getInverselyRelatedRecords(human), []);
 
     const addPlanetOp = {
       op: 'addToRelatedRecords',
@@ -773,7 +773,7 @@ module('CacheIntegrityProcessor', function(hooks) {
       []
     );
 
-    assert.deepEqual(cache.inverseRelationships.all(earth), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(earth), [{
       record: { type: 'inhabitant', id: 'human' },
       relationship: 'planets'
     }]);
@@ -788,12 +788,12 @@ module('CacheIntegrityProcessor', function(hooks) {
       t.addRecord(human)
     ]);
 
-    assert.deepEqual(cache.inverseRelationships.all(earth), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(earth), [{
       record: { type: 'inhabitant', id: 'human' },
       relationship: 'planets'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(human), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(human), [{
       record: { type: 'planet', id: 'earth' },
       relationship: 'inhabitants'
     }]);
@@ -820,9 +820,9 @@ module('CacheIntegrityProcessor', function(hooks) {
       []
     );
 
-    assert.deepEqual(cache.inverseRelationships.all(earth), []);
+    assert.deepEqual(cache.getInverselyRelatedRecords(earth), []);
 
-    assert.deepEqual(cache.inverseRelationships.all(human), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(human), [{
       record: { type: 'planet', id: 'earth' },
       relationship: 'inhabitants'
     }]);
@@ -837,12 +837,12 @@ module('CacheIntegrityProcessor', function(hooks) {
       t.addRecord(human)
     ]);
 
-    assert.deepEqual(cache.inverseRelationships.all(earth), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(earth), [{
       record: { type: 'inhabitant', id: 'human' },
       relationship: 'planets'
     }]);
 
-    assert.deepEqual(cache.inverseRelationships.all(human), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(human), [{
       record: { type: 'planet', id: 'earth' },
       relationship: 'inhabitants'
     }]);
@@ -874,8 +874,8 @@ module('CacheIntegrityProcessor', function(hooks) {
       []
     );
 
-    assert.deepEqual(cache.inverseRelationships.all(earth), []);
-    assert.deepEqual(cache.inverseRelationships.all(human), []);
+    assert.deepEqual(cache.getInverselyRelatedRecords(earth), []);
+    assert.deepEqual(cache.getInverselyRelatedRecords(human), []);
   });
 
   test('replaceRecord', function(assert) {
@@ -887,8 +887,8 @@ module('CacheIntegrityProcessor', function(hooks) {
       t.addRecord(human)
     ]);
 
-    assert.deepEqual(cache.inverseRelationships.all(earth), []);
-    assert.deepEqual(cache.inverseRelationships.all(human), []);
+    assert.deepEqual(cache.getInverselyRelatedRecords(earth), []);
+    assert.deepEqual(cache.getInverselyRelatedRecords(human), []);
 
     const humanOnEarth = {
       type: 'inhabitant',
@@ -918,10 +918,10 @@ module('CacheIntegrityProcessor', function(hooks) {
       []
     );
 
-    assert.deepEqual(cache.inverseRelationships.all(earth), [{
+    assert.deepEqual(cache.getInverselyRelatedRecords(earth), [{
       record: { type: 'inhabitant', id: 'human' },
       relationship: 'planets'
     }]);
-    assert.deepEqual(cache.inverseRelationships.all(human), []);
+    assert.deepEqual(cache.getInverselyRelatedRecords(human), []);
   });
 });

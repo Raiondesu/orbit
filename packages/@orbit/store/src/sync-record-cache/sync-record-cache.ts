@@ -2,27 +2,28 @@ import {
   evented,
   Evented
 } from '@orbit/core';
-import { deepGet, isArray } from '@orbit/utils';
+import { isArray } from '@orbit/utils';
 import {
   KeyMap,
   Record,
-  RecordIdentity,
   RecordOperation,
   Schema,
+  QueryBuilder,
+  QueryOrExpression,
+  QueryExpression,
+  buildQuery,
   TransformBuilder,
-  TransformBuilderFunc
+  TransformBuilderFunc,
+  RecordIdentity
 } from '@orbit/data';
 import { SyncOperationProcessor, SyncOperationProcessorClass } from './sync-operation-processor';
 import CacheIntegrityProcessor from './sync-operation-processors/cache-integrity-processor';
 import SchemaConsistencyProcessor from './sync-operation-processors/schema-consistency-processor';
 import SchemaValidationProcessor from './sync-operation-processors/schema-validation-processor';
 import { PatchOperators } from './operators/patch-operators';
+import { QueryOperators } from './operators/query-operators';
 import InversePatchOperators, { InversePatchOperator } from './operators/inverse-patch-operators';
-
-export interface RelatedRecordIdentity {
-  record: RecordIdentity;
-  relationship: string;
-}
+import { SyncRecordAccessor, SyncRecordAccessorSettings } from './sync-record-accessor';
 
 export type PatchResultData = Record | RecordIdentity | null;
 
@@ -31,18 +32,18 @@ export interface PatchResult {
   data: PatchResultData[]
 }
 
-export interface SyncRecordCacheSettings {
-  schema?: Schema;
-  keyMap?: KeyMap;
+export interface SyncRecordCacheSettings extends SyncRecordAccessorSettings {
   processors?: SyncOperationProcessorClass[];
   transformBuilder?: TransformBuilder;
+  queryBuilder?: QueryBuilder;
 }
 
 @evented
-export abstract class SyncRecordCache implements Evented {
+export abstract class SyncRecordCache extends SyncRecordAccessor implements Evented {
   protected _keyMap: KeyMap;
   protected _schema: Schema;
   protected _transformBuilder: TransformBuilder;
+  protected _queryBuilder: QueryBuilder;
   protected _processors: SyncOperationProcessor[];
 
   // Evented interface stubs
@@ -52,23 +53,10 @@ export abstract class SyncRecordCache implements Evented {
   emit: (event: string, ...args) => void;
   listeners: (event: string) => any[];
 
-  // Abstract methods for getting records and relationships
-  abstract getRecord(recordIdentity: RecordIdentity): Record;
-  abstract getRecords(type: string): Record[];
-  abstract getInverselyRelatedRecords(recordIdentity: RecordIdentity): RelatedRecordIdentity[];
-
-  // Abstract methods for setting records and relationships
-  abstract setRecord(record: Record): void;
-  abstract setRecords(type: string, records: Record[]): void;
-  abstract removeRecord(recordIdentity: RecordIdentity): null | Record;
-  abstract removeRecords(type: string, recordIdentities: RecordIdentity[]): Record[];
-  abstract addInverselyRelatedRecord(recordIdentity: RecordIdentity, relatedRecordIdentity: RelatedRecordIdentity): void;
-  abstract removeInverselyRelatedRecord(recordIdentity: RecordIdentity, relatedRecordIdentity: RelatedRecordIdentity): void;
-  abstract removeInverseRelationships(recordIdentity: RecordIdentity): void;
-
   constructor(settings: SyncRecordCacheSettings) {
-    this._schema = settings.schema;
-    this._keyMap = settings.keyMap;
+    super(settings);
+
+    this._queryBuilder = settings.queryBuilder || new QueryBuilder();
 
     this._transformBuilder = settings.transformBuilder || new TransformBuilder({
       recordInitializer: this._schema
@@ -78,28 +66,36 @@ export abstract class SyncRecordCache implements Evented {
     this._processors = processors.map(Processor => new Processor(this));
   }
 
-  get keyMap(): KeyMap {
-    return this._keyMap;
-  }
-
-  get schema(): Schema {
-    return this._schema;
+  get queryBuilder(): QueryBuilder {
+    return this._queryBuilder;
   }
 
   get transformBuilder(): TransformBuilder {
     return this._transformBuilder;
   }
 
-  getRelatedRecord(identity: RecordIdentity, relationship: string): RecordIdentity | null {
-    const record = this.getRecord(identity);
-    const relatedRecord = record && deepGet(record, ['relationships', relationship, 'data']);
-    return relatedRecord || null;
-  }
+ /**
+   Allows a client to run queries against the cache.
 
-  getRelatedRecords(identity: RecordIdentity, relationship: string): RecordIdentity[] {
-    const record = this.getRecord(identity);
-    const relatedRecords = record && deepGet(record, ['relationships', relationship, 'data']);
-    return relatedRecords || [];
+   @example
+   ``` javascript
+   // using a query builder callback
+   cache.query(qb.record('planet', 'idabc123')).then(results => {});
+   ```
+
+   @example
+   ``` javascript
+   // using an expression
+   cache.query(oqe('record', 'planet', 'idabc123')).then(results => {});
+   ```
+
+   @method query
+   @param {Expression} query
+   @return {Object} result of query (type depends on query)
+   */
+  query(queryOrExpression: QueryOrExpression, options?: object, id?: string): any {
+    const query = buildQuery(queryOrExpression, options, id, this._queryBuilder);
+    return this._query(query.expression);
   }
 
   /**
@@ -134,6 +130,14 @@ export abstract class SyncRecordCache implements Evented {
   /////////////////////////////////////////////////////////////////////////////
   // Protected methods
   /////////////////////////////////////////////////////////////////////////////
+
+  protected _query(expression: QueryExpression): any {
+    const operator = QueryOperators[expression.op];
+    if (!operator) {
+      throw new Error('Unable to find operator: ' + expression.op);
+    }
+    return operator(this, expression);
+  }
 
   protected _applyOperations(ops: RecordOperation[], result: PatchResult, primary: boolean = false) {
     ops.forEach(op => this._applyOperation(op, result, primary));

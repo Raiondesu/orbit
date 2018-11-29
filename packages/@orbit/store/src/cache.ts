@@ -2,20 +2,14 @@
 import { clone, Dict } from '@orbit/utils';
 import {
   Record,
-  RecordIdentity,
-  QueryOrExpression,
-  QueryExpression,
-  QueryBuilder,
-  buildQuery
+  RecordIdentity
 } from '@orbit/data';
-import { QueryOperators } from './cache/query-operators';
 import { SyncRecordCache, SyncRecordCacheSettings } from './sync-record-cache/sync-record-cache';
 import { ImmutableMap } from '@orbit/immutable';
-import { RelatedRecordIdentity } from './sync-record-cache/sync-record-cache';
+import { RelatedRecordIdentity } from './sync-record-cache/sync-record-accessor';
 
 export interface CacheSettings extends SyncRecordCacheSettings {
   base?: Cache;
-  queryBuilder?: QueryBuilder;
 }
 
 /**
@@ -26,14 +20,11 @@ export interface CacheSettings extends SyncRecordCacheSettings {
  * Because data is stored in immutable maps, caches can be forked efficiently.
  */
 export default class Cache extends SyncRecordCache {
-  protected _queryBuilder: QueryBuilder;
   protected _records: Dict<ImmutableMap<string, Record>>;
   protected _inverseRelationships: Dict<ImmutableMap<string, RelatedRecordIdentity[]>>;
 
   constructor(settings: CacheSettings = {}) {
     super(settings);
-
-    this._queryBuilder = settings.queryBuilder || new QueryBuilder();
 
     this.reset(settings.base);
   }
@@ -56,11 +47,8 @@ export default class Cache extends SyncRecordCache {
 
   setRecords(type: string, records: Record[]): void {
     // TODO
-    // let map: [string, Record][] = records.map(entry => {
-    //   return [entry.id, entry];
-    // })
+    // let map: [string, Record][] = records.map(entry => [entry.id, entry]);
     // this._records[type].setMany(map);
-
     records.forEach(record => this.setRecord(record));
   }
 
@@ -109,34 +97,6 @@ export default class Cache extends SyncRecordCache {
 
   removeInverseRelationships(recordIdentity: RecordIdentity): void {
     this._inverseRelationships[recordIdentity.type].remove(recordIdentity.id);
-  }
-
-  get queryBuilder(): QueryBuilder {
-    return this._queryBuilder;
-  }
-
-  /**
-   Allows a client to run queries against the cache.
-
-   @example
-   ``` javascript
-   // using a query builder callback
-   cache.query(qb.record('planet', 'idabc123')).then(results => {});
-   ```
-
-   @example
-   ``` javascript
-   // using an expression
-   cache.query(oqe('record', 'planet', 'idabc123')).then(results => {});
-   ```
-
-   @method query
-   @param {Expression} query
-   @return {Object} result of query (type depends on query)
-   */
-  query(queryOrExpression: QueryOrExpression, options?: object, id?: string): any {
-    const query = buildQuery(queryOrExpression, options, id, this._queryBuilder);
-    return this._query(query.expression);
   }
 
   /**
@@ -195,13 +155,5 @@ export default class Cache extends SyncRecordCache {
       inverseRelationships[type] = new ImmutableMap(baseRelationships);
     });
     this._inverseRelationships = inverseRelationships;
-  }
-
-  protected _query(expression: QueryExpression): any {
-    const operator = QueryOperators[expression.op];
-    if (!operator) {
-      throw new Error('Unable to find operator: ' + expression.op);
-    }
-    return operator(this, expression);
   }
 }

@@ -1,4 +1,4 @@
-import { Dict, deepGet, merge, every, some, isNone } from '@orbit/utils';
+import { Dict, deepGet, isNone } from '@orbit/utils';
 import {
   QueryExpression,
   RecordNotFoundException,
@@ -9,23 +9,20 @@ import {
   FindRelatedRecords,
   SortSpecifier,
   AttributeSortSpecifier,
-  Record,
-  RecordIdentity
+  Record
 } from '@orbit/data';
-import Cache from '../cache';
-
-const EMPTY = () => {};
+import { SyncRecordCache } from '../sync-record-cache';
 
 /**
  * @export
  * @interface QueryOperator
  */
 export interface QueryOperator {
-  (cache: Cache, expression: QueryExpression): any;
+  (cache: SyncRecordCache, expression: QueryExpression): any;
 }
 
 export const QueryOperators: Dict<QueryOperator> = {
-  findRecord(cache: Cache, expression: FindRecord) {
+  findRecord(cache: SyncRecordCache, expression: FindRecord) {
     const { record } = expression;
     const currentRecord = cache.getRecord(record);
 
@@ -36,7 +33,7 @@ export const QueryOperators: Dict<QueryOperator> = {
     return currentRecord;
   },
 
-  findRecords(cache: Cache, expression: FindRecords) {
+  findRecords(cache: SyncRecordCache, expression: FindRecords) {
     let results = cache.getRecords(expression.type);
     if (expression.filter) {
       results = filterRecords(results, expression.filter);
@@ -50,13 +47,13 @@ export const QueryOperators: Dict<QueryOperator> = {
     return results;
   },
 
-  findRelatedRecords(cache: Cache, expression: FindRelatedRecords): Record[] {
+  findRelatedRecords(cache: SyncRecordCache, expression: FindRelatedRecords): Record[] {
     const { record, relationship } = expression;
     const relatedIds = cache.getRelatedRecords(record, relationship);
     return relatedIds.map(id => cache.getRecord(id));
   },
 
-  findRelatedRecord(cache: Cache, expression: FindRelatedRecord): Record {
+  findRelatedRecord(cache: SyncRecordCache, expression: FindRelatedRecord): Record {
     const { record, relationship } = expression;
     const relatedId = cache.getRelatedRecord(record, relationship);
     if (relatedId) {

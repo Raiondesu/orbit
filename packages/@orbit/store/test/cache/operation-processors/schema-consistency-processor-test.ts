@@ -5,8 +5,8 @@ import {
   SchemaSettings
 } from '@orbit/data';
 import Cache from '../../../src/cache';
-import CacheIntegrityProcessor from '../../../src/cache/operation-processors/cache-integrity-processor';
-import SchemaConsistencyProcessor from '../../../src/cache/operation-processors/schema-consistency-processor';
+import CacheIntegrityProcessor from '../../../src/sync-record-cache/sync-operation-processors/cache-integrity-processor';
+import SchemaConsistencyProcessor from '../../../src/sync-record-cache/sync-operation-processors/schema-consistency-processor';
 import '../../test-helper';
 
 const { module, test } = QUnit;

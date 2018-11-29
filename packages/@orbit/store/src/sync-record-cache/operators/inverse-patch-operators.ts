@@ -1,6 +1,5 @@
 import { Dict, deepGet, deepSet, eq, isArray } from '@orbit/utils';
 import {
-  RecordIdentity,
   RecordOperation,
   AddRecordOperation,
   AddToRelatedRecordsOperation,
@@ -12,8 +11,7 @@ import {
   ReplaceKeyOperation,
   ReplaceRecordOperation,
   equalRecordIdentities,
-  equalRecordIdentitySets,
-  recordIdentitySetContains
+  equalRecordIdentitySets
 } from '@orbit/data';
 import { SyncRecordCache } from '../sync-record-cache';
 
@@ -142,9 +140,8 @@ const InversePatchOperators: Dict<InversePatchOperator> = {
 
   addToRelatedRecords(cache: SyncRecordCache, op: AddToRelatedRecordsOperation): RecordOperation {
     const { record, relationship, relatedRecord } = op;
-    const currentRelatedRecords = cache.getRelatedRecords(record, relationship);
 
-    if (!recordIdentitySetContains(currentRelatedRecords, relatedRecord)) {
+    if (!cache.relatedRecordsInclude(record, relationship, [relatedRecord])) {
       return {
         op: 'removeFromRelatedRecords',
         record,
@@ -156,9 +153,8 @@ const InversePatchOperators: Dict<InversePatchOperator> = {
 
   removeFromRelatedRecords(cache: SyncRecordCache, op: RemoveFromRelatedRecordsOperation): RecordOperation {
     const { record, relationship, relatedRecord } = op;
-    const currentRelatedRecords = cache.getRelatedRecords(record, relationship);
 
-    if (recordIdentitySetContains(currentRelatedRecords, relatedRecord)) {
+    if (cache.relatedRecordsInclude(record, relationship, relatedRecord)) {
       return {
         op: 'addToRelatedRecords',
         record,

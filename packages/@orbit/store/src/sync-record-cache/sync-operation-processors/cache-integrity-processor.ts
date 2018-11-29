@@ -1,4 +1,4 @@
-import { Dict, isArray, isObject, clone, deepGet } from '@orbit/utils';
+import { isArray, deepGet } from '@orbit/utils';
 import {
   cloneRecordIdentity,
   Record,

@@ -5,7 +5,7 @@ import {
   ModelNotFound
 } from '@orbit/data';
 import Cache from '../../../src/cache';
-import SchemaValidationProcessor from '../../../src/cache/operation-processors/schema-validation-processor';
+import SchemaValidationProcessor from '../../../src/sync-record-cache/sync-operation-processors/schema-validation-processor';
 import '../../test-helper';
 
 const { module, test } = QUnit;

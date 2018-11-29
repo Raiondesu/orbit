@@ -18,8 +18,6 @@ import {
 } from '@orbit/data';
 import { SyncRecordCache } from '../sync-record-cache';
 
-const EMPTY = () => {};
-
 export interface PatchOperator {
   (cache: SyncRecordCache, op: RecordOperation): PatchResultData;
 }
